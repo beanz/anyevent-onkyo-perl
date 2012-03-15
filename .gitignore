@@ -1,0 +1,5 @@
+/AnyEvent-Onkyo-*
+/.build
+*~
+/.tdldb.bak
+/temp
