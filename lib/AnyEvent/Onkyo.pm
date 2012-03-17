@@ -171,7 +171,6 @@ sub _real_write {
   my ($self, $str, $desc, $cb) = @_;
   print STDERR "Sending: ", $desc, "\n" if DEBUG;
   $self->{handle}->push_write($str);
-  $cb->() if ($cb);
 }
 
 sub _time_now {

@@ -43,6 +43,9 @@ if ($pid == 0) {
   is $bytes, 24, '... power on length';
   is_deeply [ unpack 'a4 N N N a*', $buf ],
     ['ISCP', 0x10, 0x8, 0x01000000, "!1PWR01\r"], '... power on';
+  my $m = pack 'a4 N N N a*', 'ISCP', 0x10, 0x8, 0x01000000,
+               "!1PWR01\032\r\n";
+  syswrite $client, $m, length $m;
 } elsif ($pid) {
   # parent
   my $onkyo = AnyEvent::Onkyo->new(device => 'discover', port => $port,
