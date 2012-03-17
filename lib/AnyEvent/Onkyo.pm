@@ -140,7 +140,6 @@ sub _open_condvar {
               );
             $weak_self->{handle} = $handle;
             $weak_self->_handle_setup();
-            delete $weak_self->{_waiting}; # uncork queued writes
             $weak_self->_write_now();
           });
   $weak_self->{_waiting} = ['fake for async open'];
