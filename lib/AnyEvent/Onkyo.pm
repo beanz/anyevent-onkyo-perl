@@ -157,6 +157,7 @@ sub _open_tcp_port {
     my $fh = shift
       or do {
         my $err = (ref $self).": Can't connect to device $dev: $!";
+        warn "Connect error: $err\n" if DEBUG;
         $self->cleanup($err);
         $cv->croak($err);
       };
@@ -193,7 +194,7 @@ sub anyevent_read_type {
       my $res = $weak_self->read_one($rbuf);
       return unless ($res);
       print STDERR "After: ", (unpack 'H*', $$rbuf), "\n" if DEBUG;
-      $res = $cb->(@$res);
+      $res = $cb->($res);
     }
   }
 }
