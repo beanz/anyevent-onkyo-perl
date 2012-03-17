@@ -29,7 +29,7 @@ use constant {
                                        $cv->send;
                                      }
                                    });
-  $onkyo->volume('up');
+  $onkyo->command('volume up');
   $cv->recv;
 
 =head1 DESCRIPTION
