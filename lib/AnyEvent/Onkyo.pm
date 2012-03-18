@@ -64,16 +64,6 @@ sub _handle_setup {
   my $handle = $self->{handle};
   my $weak_self = $self;
   weaken $weak_self;
-  $handle->on_rtimeout(subname 'on_rtimeout_cb' => sub {
-    my ($handle) = @_;
-    my $rbuf = \$handle->{rbuf};
-    if ($$rbuf ne '') {
-      print STDERR $handle, ": discarding '",
-        (unpack 'H*', $$rbuf), "'\n" if DEBUG;
-      $$rbuf = '';
-    }
-    $handle->rtimeout(0);
-  });
   $handle->on_read(subname 'on_read_cb' => sub {
     my ($hdl) = @_;
     $hdl->push_read(ref $self => $self,
@@ -108,7 +98,6 @@ sub cleanup {
   print STDERR $self."->cleanup\n" if DEBUG;
   $self->{handle}->destroy if ($self->{handle});
   delete $self->{handle};
-  undef $self->{discard_timer};
 }
 
 sub _open_condvar {
@@ -186,7 +175,6 @@ sub anyevent_read_type {
   subname 'anyevent_read_type_reader' => sub {
     my ($handle) = @_;
     my $rbuf = \$handle->{rbuf};
-    $handle->rtimeout($weak_self->{discard_timeout});
     while (1) { # read all message from the buffer
       print STDERR "Before: ", (unpack 'H*', $$rbuf||''), "\n" if DEBUG;
       my $res = $weak_self->read_one($rbuf);
