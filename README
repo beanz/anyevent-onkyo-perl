@@ -1,0 +1,38 @@
+NAME
+    AnyEvent::Onkyo - AnyEvent module for controlling Onkyo/Integra AV
+    equipment
+
+VERSION
+    version 1.123540
+
+SYNOPSIS
+      use AnyEvent;
+      use AnyEvent::Onkyo;
+      $| = 1;
+      my $cv = AnyEvent->condvar;
+      my $onkyo = AnyEvent::Onkyo->new(device => 'discover',
+                                       callback => sub {
+                                         my ($cmd, $args, $obj) = @_;
+                                         print "$cmd $args\n";
+                                         unless ($cmd eq 'NLS') {
+                                           $cv->send;
+                                         }
+                                       });
+      $onkyo->command('volume up');
+      $cv->recv;
+
+DESCRIPTION
+    AnyEvent module for controlling Onkyo/Integra AV equipment.
+
+    IMPORTANT: This is an early release and the API is still subject to
+    change. The serial port usage is entirely untested.
+
+AUTHOR
+    Mark Hindess <soft-cpan@temporalanomaly.com>
+
+COPYRIGHT AND LICENSE
+    This software is copyright (c) 2012 by Mark Hindess.
+
+    This is free software; you can redistribute it and/or modify it under
+    the same terms as the Perl 5 programming language system itself.
+

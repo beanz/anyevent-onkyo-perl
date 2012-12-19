@@ -1,0 +1,105 @@
+#!/usr/bin/perl
+use strict;
+use warnings;
+use AnyEvent::Onkyo;
+use Getopt::Long;
+use Pod::Usage;
+
+# ABSTRACT: AnyEvent Perl script to interact with Onkyo/Integra AV equipment
+# PODNAME: onkyo-anyevent
+
+
+$|=1; # don't buffer output
+
+my $man;
+my $help;
+my $device = 'discover';
+GetOptions('device=s' => \$device,
+           'help|?' => \$help, man => \$man) or pod2usage(2);
+pod2usage(1) if $help;
+pod2usage(-exitstatus => 0, -verbose => 2) if $man;
+
+my $onkyo = AnyEvent::Onkyo->new(device => $device,
+                                 callback => sub {
+                                   my ($command, $onkyo) = @_;
+                                   printf "received: %s\n", $command;
+                                 });
+
+my $done = AnyEvent->condvar;
+$done->begin;
+if (@ARGV) {
+  my $cmd = join '', @ARGV;
+  my $cv = $onkyo->command($cmd);
+  $cv->cb(sub { print "sent $cmd\n"; $done->end });
+  $done->recv;
+} else {
+  my $w;
+  my %cvs;
+  $w = AnyEvent->io(fh => \*STDIN, poll => 'r',
+                    cb => sub {
+                      my $line = <STDIN>;
+                      unless (defined $line) {
+                        # eof
+                        $done->send;
+                        return;
+                      }
+                      chomp $line;
+                      my $cv = $onkyo->command($line);
+                      $cvs{$cv} = $cv;
+                      $done->begin;
+                      $cv->cb(sub {
+                                delete $cvs{$cv};
+                                print "sent: $line\n";
+                                $done->end;
+                      });
+                    });
+
+  $done->recv;
+}
+
+
+__END__
+=pod
+
+=head1 NAME
+
+onkyo-anyevent - AnyEvent Perl script to interact with Onkyo/Integra AV equipment
+
+=head1 VERSION
+
+version 1.123540
+
+=head1 SYNOPSIS
+
+  # increase volume (using discovery)
+  onkyo-anyevent volume up
+
+  # decrease volume with "raw" command (using discovery)
+  onkyo-anyevent MVLDOWN
+
+  # send multiple commands (using named device)
+  (echo power on ; echo volume- ) | onkyo-anyevent --device amp.example.com
+
+=head1 DESCRIPTION
+
+This script is an example of the usage of the L<AnyEvent::Onkyo>
+API.  It connects to the device and reads commands from stdin and
+reports status message and responses from commands on stdout.
+
+=head1 SEE ALSO
+
+L<AnyEvent::Onkyo>
+
+=head1 AUTHOR
+
+Mark Hindess <soft-cpan@temporalanomaly.com>
+
+=head1 COPYRIGHT AND LICENSE
+
+This software is copyright (c) 2012 by Mark Hindess.
+
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
+
+=cut
+
