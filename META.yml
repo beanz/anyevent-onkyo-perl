@@ -31,6 +31,5 @@ requires:
   strict: 0
   warnings: 0
 resources:
-  bugtracker: https://github.com/beanz/anyevent-onkyo-perl/issues
   repository: git://github.com/beanz/anyevent-onkyo-perl.git
 version: 1.123540

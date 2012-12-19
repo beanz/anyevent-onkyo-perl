@@ -54,9 +54,6 @@
    },
    "release_status" : "stable",
    "resources" : {
-      "bugtracker" : {
-         "web" : "https://github.com/beanz/anyevent-onkyo-perl/issues"
-      },
       "repository" : {
          "type" : "git",
          "url" : "git://github.com/beanz/anyevent-onkyo-perl.git",
