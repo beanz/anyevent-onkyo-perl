@@ -73,6 +73,8 @@ sub _handle_setup {
                       return 1;
                     });
   });
+  $self->{handle}->on_timeout($self->{on_timeout}) if ($self->{on_timeout});
+  $self->{handle}->timeout($self->{timeout}) if ($self->{timeout});
   1;
 }
 
