@@ -30,6 +30,7 @@ my $onkyo = AnyEvent::Onkyo->new(device => $device,
 
 if (@ARGV) {
   my $cmd = join '', @ARGV;
+  print "sending: $line\n";
   my $cv = $onkyo->command($cmd);
   $cv->cb(sub { print "sent $cmd\n"; });
   $done->recv;
@@ -52,6 +53,7 @@ if (@ARGV) {
     my ($hdl) = @_;
     $hdl->push_read(line => sub {
                       my ($hdl, $line) = @_;
+                      print "sending: $line\n";
                       my $cv = $onkyo->command($line);
                       $cvs{$cv} = $cv;
                       $done->begin;
