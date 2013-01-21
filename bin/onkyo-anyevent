@@ -23,7 +23,7 @@ my $done = AnyEvent->condvar;
 $done->begin;
 my $onkyo = AnyEvent::Onkyo->new(device => $device,
                                  callback => sub {
-                                   my $command = @_;
+                                   my $command = shift;
                                    print "received: $command\n";
                                    $done->end unless ($command =~ /^NLS/);
                                  });
