@@ -3,7 +3,7 @@ use warnings;
 package AnyEvent::Onkyo;
 use base 'Device::Onkyo';
 use AnyEvent::Handle;
-use AnyEvent::Socket;
+use AnyEvent::SerialPort;
 use Carp qw/croak carp/;
 use Sub::Name;
 use Scalar::Util qw/weaken/;
@@ -107,11 +107,68 @@ sub command {
   return $cv;
 }
 
+sub _open {
+  my $self = shift;
+  $self->SUPER::_open($self->_open_condvar);
+  return 1;
+}
+
+sub _open_tcp_port {
+  my ($self, $cv) = @_;
+  my $dev = $self->{device};
+  print STDERR "Opening $dev as tcp socket\n" if DEBUG;
+  my ($host, $port) = split /:/, $dev, 2;
+  $port = $self->{port} unless (defined $port);
+  $self->{handle} =
+    AnyEvent::Handle->new(connect => [$host, $port],
+                          on_connect => subname('tcp_connect_cb' => sub {
+                            my ($hdl, $h, $p) = @_;
+                            warn ref $self, " connected to $h:$p\n" if DEBUG;
+                            $cv->send();
+                          }),
+                          on_connect_error =>
+                          subname('tcp_connect_error_cb' => sub {
+                            my ($hdl, $msg) = @_;
+                            my $err =
+                              (ref $self).": Can't connect to $dev: $msg";
+                            warn "Connect error: $err\n" if DEBUG;
+                            $self->cleanup($err);
+                            $cv->croak;
+                          }));
+  return $cv;
+}
+
+sub _open_serial_port {
+  my ($self, $cv) = @_;
+  $self->{handle} =
+    AnyEvent::SerialPort->new(serial_port =>
+                              [ $self->device,
+                                [ baudrate => $self->baud ] ]);
+  $cv->send();
+  return $cv;
+}
+
 sub _handle_setup {
   my $self = shift;
   my $handle = $self->{handle};
   my $weak_self = $self;
   weaken $weak_self;
+
+  $handle->on_error(subname('on_error' => sub {
+                              my ($hdl, $fatal, $msg) = @_;
+                              print STDERR $hdl.": error $msg\n" if DEBUG;
+                              $hdl->destroy;
+                              if ($fatal) {
+                                $weak_self->cleanup($msg);
+                              }
+                            }));
+
+  $handle->on_eof(subname('on_eof' => sub {
+                            my ($hdl) = @_;
+                            print STDERR $hdl.": eof\n" if DEBUG;
+                            $weak_self->cleanup('connection closed');
+                          }));
+
   $handle->on_read(subname 'on_read_cb' => sub {
     my ($hdl) = @_;
     $hdl->push_read(ref $self => $self,
@@ -121,22 +178,10 @@ sub _handle_setup {
                       return 1;
                     });
   });
+
   $self->{handle}->on_timeout($self->{on_timeout}) if ($self->{on_timeout});
   $self->{handle}->timeout($self->{timeout}) if ($self->{timeout});
   1;
-}
-
-sub _open {
-  my $self = shift;
-  $self->SUPER::_open($self->_open_condvar);
-  return 1;
-}
-
-sub _open_serial_port {
-  my ($self, $cv) = @_;
-  my $fh = $self->SUPER::_open_serial_port;
-  $cv->send($fh);
-  return $cv;
 }
 
 sub DESTROY {
@@ -165,51 +210,11 @@ sub _open_condvar {
   weaken $weak_self;
 
   $cv->cb(subname 'open_cb' => sub {
-            my $fh = $_[0]->recv;
-            print STDERR "start cb $fh @_\n" if DEBUG;
-            my $handle; $handle =
-              AnyEvent::Handle->new(
-                fh => $fh,
-                on_error => subname('on_error' => sub {
-                  my ($handle, $fatal, $msg) = @_;
-                  print STDERR $handle.": error $msg\n" if DEBUG;
-                  $handle->destroy;
-                  if ($fatal) {
-                    $weak_self->cleanup($msg);
-                  }
-                }),
-                on_eof => subname('on_eof' => sub {
-                  my ($handle) = @_;
-                  print STDERR $handle.": eof\n" if DEBUG;
-                  $weak_self->cleanup('connection closed');
-                }),
-              );
-            $weak_self->{handle} = $handle;
+            print STDERR "start cb ", $weak_self->{handle}, " @_\n" if DEBUG;
             $weak_self->_handle_setup();
             $weak_self->_write_now();
           });
   $weak_self->{_waiting} = ['fake for async open'];
-  return $cv;
-}
-
-sub _open_tcp_port {
-  my ($self, $cv) = @_;
-  my $dev = $self->{device};
-  print STDERR "Opening $dev as tcp socket\n" if DEBUG;
-  my ($host, $port) = split /:/, $dev, 2;
-  $port = $self->{port} unless (defined $port);
-  $self->{sock} = tcp_connect $host, $port, subname 'tcp_connect_cb' => sub {
-    my $fh = shift
-      or do {
-        my $err = (ref $self).": Can't connect to device $dev: $!";
-        warn "Connect error: $err\n" if DEBUG;
-        $self->cleanup($err);
-        $cv->croak($err);
-      };
-
-    warn "Connected\n" if DEBUG;
-    $cv->send($fh);
-  };
   return $cv;
 }
 
