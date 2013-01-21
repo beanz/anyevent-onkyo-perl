@@ -48,7 +48,7 @@ if (@ARGV) {
                                  my ($hdl, $fatal, $msg) = @_;
                                  $done->end;
                                });
-  $hdl->on_read => sub {
+  $hdl->on_read(sub {
     my ($hdl) = @_;
     $hdl->push_read(line => sub {
                       my $line = shift;
