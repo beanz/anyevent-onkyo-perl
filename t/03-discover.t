@@ -7,7 +7,7 @@ use constant {
   DEBUG => $ENV{ANYEVENT_ONKYO_TEST_DEBUG}
 };
 use Socket;
-use Test::More tests => 5;
+use Test::More;
 use Test::Requires qw/Test::SharedFork/;
 use Test::SharedFork;
 use AnyEvent::Onkyo;
@@ -16,11 +16,13 @@ use IO::Socket::INET;
 socket my $s, PF_INET, SOCK_DGRAM, getprotobyname('udp');
 setsockopt $s, SOL_SOCKET, SO_BROADCAST, 1;
 binmode $s;
-bind $s, sockaddr_in(0, inet_aton('0.0.0.0'));
+bind $s, sockaddr_in(0, inet_aton('127.0.0.1'))
+  or plan skip_all => "Failed to bind to loopback address: $!";
 my ($port, $addr) = sockaddr_in(getsockname($s));
 my $tcp =
   IO::Socket::INET->new(Listen => 5, Proto => 'tcp',
-                        LocalAddr => '0.0.0.0', LocalPort => 0) or die;
+                        LocalAddr => '127.0.0.1', LocalPort => 0)
+  or plan skip_all => "Failed to listen on loopback address: $!";
 my $tcp_port = $tcp->sockport;
 
 my $pid = fork();
@@ -43,8 +45,8 @@ if ($pid == 0) {
   is $bytes, 24, '... power on length';
   is_deeply [ unpack 'a4 N N N a*', $buf ],
     ['ISCP', 0x10, 0x8, 0x01000000, "!1PWR01\r"], '... power on';
-  my $m = pack 'a4 N N N a*', 'ISCP', 0x10, 0x8, 0x01000000,
-               "!1PWR01\032\r\n";
+  $m = pack 'a4 N N N a*', 'ISCP', 0x10, 0x8, 0x01000000,
+                           "!1PWR01\032\r\n";
   syswrite $client, $m, length $m;
 } elsif ($pid) {
   # parent
@@ -55,6 +57,7 @@ if ($pid == 0) {
   my $cv = $onkyo->command('power on');
   $cv->recv;
   waitpid $pid, 0;
+  done_testing;
 } else {
   die $!;
 }
