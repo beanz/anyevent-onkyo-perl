@@ -1,6 +1,8 @@
 #!/usr/bin/perl
 use strict;
 use warnings;
+use AnyEvent;
+use AnyEvent::Handle;
 use AnyEvent::Onkyo;
 use Getopt::Long;
 use Pod::Usage;
@@ -48,29 +50,39 @@ my $onkyo = AnyEvent::Onkyo->new(device => $device,
 
 if (@ARGV) {
   my $cmd = join '', @ARGV;
+  print "sending: $cmd\n";
   my $cv = $onkyo->command($cmd);
   $cv->cb(sub { print "sent $cmd\n"; });
   $done->recv;
 } else {
   my $w;
   my %cvs;
-  $w = AnyEvent->io(fh => \*STDIN, poll => 'r',
-                    cb => sub {
-                      my $line = <STDIN>;
-                      unless (defined $line) {
-                        # eof
-                        $done->send;
-                        return;
-                      }
-                      chomp $line;
+  my $hdl;
+  $hdl = AnyEvent::Handle->new(fh => \*STDIN,
+                               on_error => sub {
+                                 my ($hdl, $fatal, $msg) = @_;
+                                 warn "got error $msg\n";
+                                 $hdl->destroy;
+                                 $done->end;
+                               },
+                               on_eof => sub {
+                                 my ($hdl, $fatal, $msg) = @_;
+                                 $done->end;
+                               });
+  $hdl->on_read(sub {
+    my ($hdl) = @_;
+    $hdl->push_read(line => sub {
+                      my ($hdl, $line) = @_;
+                      print "sending: $line\n";
                       my $cv = $onkyo->command($line);
                       $cvs{$cv} = $cv;
                       $done->begin;
                       $cv->cb(sub {
                                 delete $cvs{$cv};
                                 print "sent: $line\n";
-                      });
+                              });
                     });
+  });
 
   $done->recv;
 }
