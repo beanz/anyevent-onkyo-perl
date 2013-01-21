@@ -23,9 +23,9 @@ use constant {
   my $cv = AnyEvent->condvar;
   my $onkyo = AnyEvent::Onkyo->new(device => 'discover',
                                    callback => sub {
-                                     my ($cmd, $args, $obj) = @_;
-                                     print "$cmd $args\n";
-                                     unless ($cmd eq 'NLS') {
+                                     my $cmd = shift;
+                                     print "$cmd\n";
+                                     unless ($cmd =~ /^NLS/) {
                                        $cv->send;
                                      }
                                    });
@@ -38,6 +38,54 @@ AnyEvent module for controlling Onkyo/Integra AV equipment.
 
 B<IMPORTANT:> This is an early release and the API is still subject to
 change. The serial port usage is entirely untested.
+
+=method C<new(%params)>
+
+Constructs a new AnyEvent::Onkyo object.  The supported parameters are:
+
+=over
+
+=item device
+
+The name of the device to connect to.  The value can be a tty device
+name or C<hostname:port> for TCP.  It may also be the string
+'discover' in which case automatic discovery will be attempted.  This
+value defaults to 'discover'.  Note that discovery is currently blocking
+and not recommended.
+
+=item callback
+
+The code reference to execute when a message is received from the
+device.  The callback is called with the body of the message as a
+string as the only argument.
+
+=item type
+
+Whether the protocol should be 'ISCP' or 'eISCP'.  The default is
+'ISCP' if a tty device was given as the 'device' parameter or 'eISCP'
+otherwise.
+
+=item baud
+
+The baud rate for the tty device.  The default is C<9600>.
+
+=item port
+
+The port for a TCP device.  The default is C<60128>.
+
+=item broadcast_source_ip
+
+The source IP address that the discovery process uses for its
+broadcast.  The default, '0.0.0.0', should work in most cases but
+multi-homed hosts might need to specify the correct local interface
+address.
+
+=item broadcast_dest_ip
+
+The IP address that the discovery process uses for its broadcast.  The
+default, '255.255.255.255', should work in most cases.
+
+=back
 
 =cut
 
@@ -94,6 +142,13 @@ sub _open_serial_port {
 sub DESTROY {
   $_[0]->cleanup;
 }
+
+=method C<cleanup()>
+
+This method attempts to destroy any resources in the event of a
+disconnection or fatal error.
+
+=cut
 
 sub cleanup {
   my ($self, $error) = @_;
@@ -167,6 +222,13 @@ sub _real_write {
 sub _time_now {
   AnyEvent->now;
 }
+
+=method C<anyevent_read_type()>
+
+This method is used to register an L<AnyEvent::Handle> read type
+method to read Current Cost messages.
+
+=cut
 
 sub anyevent_read_type {
   my ($handle, $cb, $self) = @_;
