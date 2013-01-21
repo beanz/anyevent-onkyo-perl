@@ -37,18 +37,19 @@ GetOptions('device=s' => \$device,
 pod2usage(1) if $help;
 pod2usage(-exitstatus => 0, -verbose => 2) if $man;
 
-my $onkyo = AnyEvent::Onkyo->new(device => $device,
-                                 callback => sub {
-                                   my ($command, $onkyo) = @_;
-                                   printf "received: %s\n", $command;
-                                 });
-
 my $done = AnyEvent->condvar;
 $done->begin;
+my $onkyo = AnyEvent::Onkyo->new(device => $device,
+                                 callback => sub {
+                                   my $command = @_;
+                                   print "received: $command\n";
+                                   $done->end unless ($command =~ /^NLS/);
+                                 });
+
 if (@ARGV) {
   my $cmd = join '', @ARGV;
   my $cv = $onkyo->command($cmd);
-  $cv->cb(sub { print "sent $cmd\n"; $done->end });
+  $cv->cb(sub { print "sent $cmd\n"; });
   $done->recv;
 } else {
   my $w;
@@ -68,7 +69,6 @@ if (@ARGV) {
                       $cv->cb(sub {
                                 delete $cvs{$cv};
                                 print "sent: $line\n";
-                                $done->end;
                       });
                     });
 
