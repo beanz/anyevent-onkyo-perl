@@ -28,6 +28,7 @@ my %WriteMakefileArgs = (
   "LICENSE" => "perl",
   "NAME" => "AnyEvent::Onkyo",
   "PREREQ_PM" => {
+    "AnyEvent" => 0,
     "AnyEvent::Handle" => 0,
     "AnyEvent::SerialPort" => 0,
     "Carp" => 0,

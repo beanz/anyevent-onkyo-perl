@@ -1,6 +1,8 @@
 #!/usr/bin/perl
 use strict;
 use warnings;
+use AnyEvent;
+use AnyEvent::Handle;
 use AnyEvent::Onkyo;
 use Getopt::Long;
 use Pod::Usage;

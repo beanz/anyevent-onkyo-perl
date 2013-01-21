@@ -18,6 +18,7 @@ meta-spec:
   version: 1.4
 name: AnyEvent-Onkyo
 requires:
+  AnyEvent: 0
   AnyEvent::Handle: 0
   AnyEvent::SerialPort: 0
   Carp: 0
