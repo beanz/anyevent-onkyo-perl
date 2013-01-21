@@ -51,7 +51,7 @@ if (@ARGV) {
   $hdl->on_read(sub {
     my ($hdl) = @_;
     $hdl->push_read(line => sub {
-                      my $line = shift;
+                      my ($hdl, $line) = @_;
                       my $cv = $onkyo->command($line);
                       $cvs{$cv} = $cv;
                       $done->begin;
