@@ -41,7 +41,7 @@ if (@ARGV) {
                       my $line = <STDIN>;
                       unless (defined $line) {
                         # eof
-                        $done->send;
+                        $done->end;
                         return;
                       }
                       chomp $line;
