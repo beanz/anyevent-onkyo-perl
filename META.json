@@ -29,7 +29,7 @@
       "runtime" : {
          "requires" : {
             "AnyEvent::Handle" : "0",
-            "AnyEvent::Socket" : "0",
+            "AnyEvent::SerialPort" : "0",
             "Carp" : "0",
             "Device::Onkyo" : "0",
             "Getopt::Long" : "0",
@@ -54,12 +54,15 @@
    },
    "release_status" : "stable",
    "resources" : {
+      "bugtracker" : {
+         "web" : "https://github.com/beanz/anyevent-onkyo-perl/issues"
+      },
       "repository" : {
          "type" : "git",
          "url" : "git://github.com/beanz/anyevent-onkyo-perl.git",
          "web" : "https://github.com/beanz/anyevent-onkyo-perl"
       }
    },
-   "version" : "1.123540"
+   "version" : "1.130210"
 }
 

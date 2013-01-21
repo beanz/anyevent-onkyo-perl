@@ -29,7 +29,7 @@ my %WriteMakefileArgs = (
   "NAME" => "AnyEvent::Onkyo",
   "PREREQ_PM" => {
     "AnyEvent::Handle" => 0,
-    "AnyEvent::Socket" => 0,
+    "AnyEvent::SerialPort" => 0,
     "Carp" => 0,
     "Device::Onkyo" => 0,
     "Getopt::Long" => 0,
@@ -41,7 +41,7 @@ my %WriteMakefileArgs = (
     "strict" => 0,
     "warnings" => 0
   },
-  "VERSION" => "1.123540",
+  "VERSION" => "1.130210",
   "test" => {
     "TESTS" => "t/*.t"
   }

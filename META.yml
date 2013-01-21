@@ -19,7 +19,7 @@ meta-spec:
 name: AnyEvent-Onkyo
 requires:
   AnyEvent::Handle: 0
-  AnyEvent::Socket: 0
+  AnyEvent::SerialPort: 0
   Carp: 0
   Device::Onkyo: 0
   Getopt::Long: 0
@@ -31,5 +31,6 @@ requires:
   strict: 0
   warnings: 0
 resources:
+  bugtracker: https://github.com/beanz/anyevent-onkyo-perl/issues
   repository: git://github.com/beanz/anyevent-onkyo-perl.git
-version: 1.123540
+version: 1.130210

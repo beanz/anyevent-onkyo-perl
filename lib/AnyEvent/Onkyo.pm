@@ -2,11 +2,11 @@ use strict;
 use warnings;
 package AnyEvent::Onkyo;
 {
-  $AnyEvent::Onkyo::VERSION = '1.123540';
+  $AnyEvent::Onkyo::VERSION = '1.130210';
 }
 use base 'Device::Onkyo';
 use AnyEvent::Handle;
-use AnyEvent::Socket;
+use AnyEvent::SerialPort;
 use Carp qw/croak carp/;
 use Sub::Name;
 use Scalar::Util qw/weaken/;
@@ -37,11 +37,68 @@ sub command {
   return $cv;
 }
 
+sub _open {
+  my $self = shift;
+  $self->SUPER::_open($self->_open_condvar);
+  return 1;
+}
+
+sub _open_tcp_port {
+  my ($self, $cv) = @_;
+  my $dev = $self->{device};
+  print STDERR "Opening $dev as tcp socket\n" if DEBUG;
+  my ($host, $port) = split /:/, $dev, 2;
+  $port = $self->{port} unless (defined $port);
+  $self->{handle} =
+    AnyEvent::Handle->new(connect => [$host, $port],
+                          on_connect => subname('tcp_connect_cb' => sub {
+                            my ($hdl, $h, $p) = @_;
+                            warn ref $self, " connected to $h:$p\n" if DEBUG;
+                            $cv->send();
+                          }),
+                          on_connect_error =>
+                          subname('tcp_connect_error_cb' => sub {
+                            my ($hdl, $msg) = @_;
+                            my $err =
+                              (ref $self).": Can't connect to $dev: $msg";
+                            warn "Connect error: $err\n" if DEBUG;
+                            $self->cleanup($err);
+                            $cv->croak;
+                          }));
+  return $cv;
+}
+
+sub _open_serial_port {
+  my ($self, $cv) = @_;
+  $self->{handle} =
+    AnyEvent::SerialPort->new(serial_port =>
+                              [ $self->device,
+                                [ baudrate => $self->baud ] ]);
+  $cv->send();
+  return $cv;
+}
+
 sub _handle_setup {
   my $self = shift;
   my $handle = $self->{handle};
   my $weak_self = $self;
   weaken $weak_self;
+
+  $handle->on_error(subname('on_error' => sub {
+                              my ($hdl, $fatal, $msg) = @_;
+                              print STDERR $hdl.": error $msg\n" if DEBUG;
+                              $hdl->destroy;
+                              if ($fatal) {
+                                $weak_self->cleanup($msg);
+                              }
+                            }));
+
+  $handle->on_eof(subname('on_eof' => sub {
+                            my ($hdl) = @_;
+                            print STDERR $hdl.": eof\n" if DEBUG;
+                            $weak_self->cleanup('connection closed');
+                          }));
+
   $handle->on_read(subname 'on_read_cb' => sub {
     my ($hdl) = @_;
     $hdl->push_read(ref $self => $self,
@@ -51,25 +108,16 @@ sub _handle_setup {
                       return 1;
                     });
   });
+
+  $self->{handle}->on_timeout($self->{on_timeout}) if ($self->{on_timeout});
+  $self->{handle}->timeout($self->{timeout}) if ($self->{timeout});
   1;
-}
-
-sub _open {
-  my $self = shift;
-  $self->SUPER::_open($self->_open_condvar);
-  return 1;
-}
-
-sub _open_serial_port {
-  my ($self, $cv) = @_;
-  my $fh = $self->SUPER::_open_serial_port;
-  $cv->send($fh);
-  return $cv;
 }
 
 sub DESTROY {
   $_[0]->cleanup;
 }
+
 
 sub cleanup {
   my ($self, $error) = @_;
@@ -86,51 +134,11 @@ sub _open_condvar {
   weaken $weak_self;
 
   $cv->cb(subname 'open_cb' => sub {
-            my $fh = $_[0]->recv;
-            print STDERR "start cb $fh @_\n" if DEBUG;
-            my $handle; $handle =
-              AnyEvent::Handle->new(
-                fh => $fh,
-                on_error => subname('on_error' => sub {
-                  my ($handle, $fatal, $msg) = @_;
-                  print STDERR $handle.": error $msg\n" if DEBUG;
-                  $handle->destroy;
-                  if ($fatal) {
-                    $weak_self->cleanup($msg);
-                  }
-                }),
-                on_eof => subname('on_eof' => sub {
-                  my ($handle) = @_;
-                  print STDERR $handle.": eof\n" if DEBUG;
-                  $weak_self->cleanup('connection closed');
-                }),
-              );
-            $weak_self->{handle} = $handle;
+            print STDERR "start cb ", $weak_self->{handle}, " @_\n" if DEBUG;
             $weak_self->_handle_setup();
             $weak_self->_write_now();
           });
   $weak_self->{_waiting} = ['fake for async open'];
-  return $cv;
-}
-
-sub _open_tcp_port {
-  my ($self, $cv) = @_;
-  my $dev = $self->{device};
-  print STDERR "Opening $dev as tcp socket\n" if DEBUG;
-  my ($host, $port) = split /:/, $dev, 2;
-  $port = $self->{port} unless (defined $port);
-  $self->{sock} = tcp_connect $host, $port, subname 'tcp_connect_cb' => sub {
-    my $fh = shift
-      or do {
-        my $err = (ref $self).": Can't connect to device $dev: $!";
-        warn "Connect error: $err\n" if DEBUG;
-        $self->cleanup($err);
-        $cv->croak($err);
-      };
-
-    warn "Connected\n" if DEBUG;
-    $cv->send($fh);
-  };
   return $cv;
 }
 
@@ -143,6 +151,7 @@ sub _real_write {
 sub _time_now {
   AnyEvent->now;
 }
+
 
 sub anyevent_read_type {
   my ($handle, $cb, $self) = @_;
@@ -174,7 +183,7 @@ AnyEvent::Onkyo - AnyEvent module for controlling Onkyo/Integra AV equipment
 
 =head1 VERSION
 
-version 1.123540
+version 1.130210
 
 =head1 SYNOPSIS
 
@@ -184,9 +193,9 @@ version 1.123540
   my $cv = AnyEvent->condvar;
   my $onkyo = AnyEvent::Onkyo->new(device => 'discover',
                                    callback => sub {
-                                     my ($cmd, $args, $obj) = @_;
-                                     print "$cmd $args\n";
-                                     unless ($cmd eq 'NLS') {
+                                     my $cmd = shift;
+                                     print "$cmd\n";
+                                     unless ($cmd =~ /^NLS/) {
                                        $cv->send;
                                      }
                                    });
@@ -199,6 +208,66 @@ AnyEvent module for controlling Onkyo/Integra AV equipment.
 
 B<IMPORTANT:> This is an early release and the API is still subject to
 change. The serial port usage is entirely untested.
+
+=head1 METHODS
+
+=head2 C<new(%params)>
+
+Constructs a new AnyEvent::Onkyo object.  The supported parameters are:
+
+=over
+
+=item device
+
+The name of the device to connect to.  The value can be a tty device
+name or C<hostname:port> for TCP.  It may also be the string
+'discover' in which case automatic discovery will be attempted.  This
+value defaults to 'discover'.  Note that discovery is currently blocking
+and not recommended.
+
+=item callback
+
+The code reference to execute when a message is received from the
+device.  The callback is called with the body of the message as a
+string as the only argument.
+
+=item type
+
+Whether the protocol should be 'ISCP' or 'eISCP'.  The default is
+'ISCP' if a tty device was given as the 'device' parameter or 'eISCP'
+otherwise.
+
+=item baud
+
+The baud rate for the tty device.  The default is C<9600>.
+
+=item port
+
+The port for a TCP device.  The default is C<60128>.
+
+=item broadcast_source_ip
+
+The source IP address that the discovery process uses for its
+broadcast.  The default, '0.0.0.0', should work in most cases but
+multi-homed hosts might need to specify the correct local interface
+address.
+
+=item broadcast_dest_ip
+
+The IP address that the discovery process uses for its broadcast.  The
+default, '255.255.255.255', should work in most cases.
+
+=back
+
+=head2 C<cleanup()>
+
+This method attempts to destroy any resources in the event of a
+disconnection or fatal error.
+
+=head2 C<anyevent_read_type()>
+
+This method is used to register an L<AnyEvent::Handle> read type
+method to read Current Cost messages.
 
 =head1 AUTHOR
 

@@ -7,14 +7,6 @@ META.yml
 Makefile.PL
 README
 bin/onkyo-anyevent
-cover_db/cover.12
-cover_db/cover.css
-cover_db/coverage.html
-cover_db/index.html
-cover_db/lib-AnyEvent-Onkyo-pm--branch.html
-cover_db/lib-AnyEvent-Onkyo-pm--subroutine.html
-cover_db/lib-AnyEvent-Onkyo-pm.html
-cover_db/structure/1891f828dd04eedc619956a8287e5a81
 debian/changelog
 debian/compat
 debian/control
