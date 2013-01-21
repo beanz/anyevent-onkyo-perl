@@ -60,6 +60,7 @@ if (@ARGV) {
                                 print "sent: $line\n";
                               });
                     });
+  });
 
   $done->recv;
 }
