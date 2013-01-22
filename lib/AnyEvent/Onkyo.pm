@@ -96,6 +96,13 @@ sub new {
   $self;
 }
 
+=method C<command($command)>
+
+This method takes a command and returns a callback to notify the caller
+when it has been sent.
+
+=cut
+
 sub command {
   my $self = shift;
   my $cv = AnyEvent->condvar;
