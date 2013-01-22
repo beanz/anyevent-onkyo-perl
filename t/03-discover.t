@@ -7,7 +7,7 @@ use constant {
   DEBUG => $ENV{ANYEVENT_ONKYO_TEST_DEBUG}
 };
 use Socket;
-use Test::More tests => 5;
+use Test::More;
 use Test::Requires qw/Test::SharedFork/;
 use Test::SharedFork;
 use AnyEvent::Onkyo;
@@ -16,11 +16,13 @@ use IO::Socket::INET;
 socket my $s, PF_INET, SOCK_DGRAM, getprotobyname('udp');
 setsockopt $s, SOL_SOCKET, SO_BROADCAST, 1;
 binmode $s;
-bind $s, sockaddr_in(0, inet_aton('0.0.0.0'));
+bind $s, sockaddr_in(0, inet_aton('127.0.0.1'))
+  or plan skip_all => "Failed to bind to loopback address: $!";
 my ($port, $addr) = sockaddr_in(getsockname($s));
 my $tcp =
   IO::Socket::INET->new(Listen => 5, Proto => 'tcp',
-                        LocalAddr => '0.0.0.0', LocalPort => 0) or die;
+                        LocalAddr => '127.0.0.1', LocalPort => 0)
+  or plan skip_all => "Failed to listen on loopback address: $!";
 my $tcp_port = $tcp->sockport;
 
 my $pid = fork();
@@ -49,12 +51,15 @@ if ($pid == 0) {
 } elsif ($pid) {
   # parent
   my $onkyo = AnyEvent::Onkyo->new(device => 'discover', port => $port,
+                                   broadcast_source_ip => '127.0.0.1',
+                                   broadcast_dest_ip => '127.0.0.1',
                                    callback => sub { });
   ok $onkyo, 'object';
   is $onkyo->port, $tcp_port, '... discovered';
   my $cv = $onkyo->command('power on');
   $cv->recv;
   waitpid $pid, 0;
+  done_testing;
 } else {
   die $!;
 }
