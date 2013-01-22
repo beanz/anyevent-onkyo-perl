@@ -204,7 +204,7 @@ sub cleanup {
 
 sub _open_condvar {
   my $self = shift;
-  print STDERR "open_cv\n" if DEBUG;
+  print STDERR $self."->open_condvar\n" if DEBUG;
   my $cv = AnyEvent->condvar;
   my $weak_self = $self;
   weaken $weak_self;
