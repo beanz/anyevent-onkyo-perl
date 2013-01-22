@@ -51,6 +51,8 @@ if ($pid == 0) {
 } elsif ($pid) {
   # parent
   my $onkyo = AnyEvent::Onkyo->new(device => 'discover', port => $port,
+                                   broadcast_source_ip => '127.0.0.1',
+                                   broadcast_dest_ip => '127.0.0.1',
                                    callback => sub { });
   ok $onkyo, 'object';
   is $onkyo->port, $tcp_port, '... discovered';

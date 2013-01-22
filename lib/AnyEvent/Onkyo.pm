@@ -2,7 +2,7 @@ use strict;
 use warnings;
 package AnyEvent::Onkyo;
 {
-  $AnyEvent::Onkyo::VERSION = '1.130210';
+  $AnyEvent::Onkyo::VERSION = '1.130220';
 }
 use base 'Device::Onkyo';
 use AnyEvent::Handle;
@@ -25,6 +25,7 @@ sub new {
   my $self = $pkg->SUPER::new(device => 'discover', %p);
   $self;
 }
+
 
 sub command {
   my $self = shift;
@@ -128,7 +129,7 @@ sub cleanup {
 
 sub _open_condvar {
   my $self = shift;
-  print STDERR "open_cv\n" if DEBUG;
+  print STDERR $self."->open_condvar\n" if DEBUG;
   my $cv = AnyEvent->condvar;
   my $weak_self = $self;
   weaken $weak_self;
@@ -183,7 +184,7 @@ AnyEvent::Onkyo - AnyEvent module for controlling Onkyo/Integra AV equipment
 
 =head1 VERSION
 
-version 1.130210
+version 1.130220
 
 =head1 SYNOPSIS
 
@@ -258,6 +259,11 @@ The IP address that the discovery process uses for its broadcast.  The
 default, '255.255.255.255', should work in most cases.
 
 =back
+
+=head2 C<command($command)>
+
+This method takes a command and returns a callback to notify the caller
+when it has been sent.
 
 =head2 C<cleanup()>
 
