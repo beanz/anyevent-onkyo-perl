@@ -79,7 +79,7 @@ onkyo-anyevent - AnyEvent Perl script to interact with Onkyo/Integra AV equipmen
 
 =head1 VERSION
 
-version 1.130210
+version 1.130220
 
 =head1 SYNOPSIS
 
