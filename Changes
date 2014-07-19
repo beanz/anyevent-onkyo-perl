@@ -1,5 +1,7 @@
 Revision history for Perl extension AnyEvent::Onkyo.
 
+1.142000  2014-07-19 14:23:48+01:00 Europe/London
+
 1.130220  2013-01-22 18:21:45 Europe/London
     - Fix tests on BSD.
 
